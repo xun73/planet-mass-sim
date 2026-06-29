@@ -1,0 +1,512 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, maximum-scale=1">
+<title>克卜勒運動物理模擬 - 雙星與質心系統</title>
+<style>
+*{box-sizing:border-box}
+body{font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif;background:#fff;color:#333;margin:0;padding:20px;display:flex;flex-direction:column;align-items:center}
+.container{background:#fdfdfd;padding:25px;border-radius:12px;width:100%;max-width:1000px;box-shadow:0 4px 15px rgba(0,0,0,.05);border:1px solid #eaeaea}
+.lang-bar{text-align:right;margin-bottom:8px}
+.lang-btn{padding:4px 14px;font-size:.82em;border:1px solid #bdc3c7;border-radius:14px;background:#fff;cursor:pointer;color:#555;transition:all .15s}
+.lang-btn:hover{background:#3498db;color:#fff;border-color:#3498db}
+.lang-btn.active{background:#2c3e50;color:#fff;border-color:#2c3e50}
+h1{color:#2c3e50;text-align:center;margin-top:0;font-size:1.8em}
+.subtitle{text-align:center;color:#7f8c8d;margin-bottom:20px;font-size:.9em}
+.formulas-wrapper{background:#f8f9fa;border-radius:8px;margin-bottom:20px;border:1px solid #e0e0e0;overflow:hidden}
+.formulas-header{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;cursor:pointer;font-size:.88em;font-weight:bold;color:#2c3e50;background:#eef0f2}
+.formulas-header:hover{background:#e4e6e9}
+.formulas{background:#f8f9fa;padding:15px 20px;font-family:'Courier New',Courier,monospace;border-left:5px solid #e74c3c;line-height:1.8;font-size:.95em;color:#2c3e50}
+.formulas.hidden{display:none}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+.control-group{display:flex;flex-direction:column;background:#fff;padding:12px;border-radius:8px;border:1px solid #e0e0e0}
+.input-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+label{font-weight:bold;color:#555;font-size:.85em}
+input[type=number]{width:100px;padding:4px;border:1px solid #ccc;border-radius:4px;font-family:monospace;text-align:right}
+input[type=range]{width:100%;cursor:pointer;margin:4px 0;height:20px;-webkit-appearance:none;appearance:none;background:transparent}
+input[type=range]::-webkit-slider-runnable-track{height:4px;background:#dce1e6;border-radius:2px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:18px;height:18px;border-radius:50%;background:#3498db;cursor:pointer;margin-top:-7px}
+input[type=range]::-moz-range-track{height:4px;background:#dce1e6;border-radius:2px}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#3498db;cursor:pointer;border:none}
+.quick-row{display:flex;flex-wrap:wrap;gap:4px;margin:4px 0 0}
+.quick-btn{padding:2px 10px;font-size:.76em;border:1px solid #ccc;border-radius:12px;background:#f5f5f5;cursor:pointer;color:#555;transition:all .15s;touch-action:manipulation}
+.quick-btn:hover{background:#3498db;color:#fff;border-color:#3498db}
+.quick-btn.active{background:#2c3e50;color:#fff;border-color:#2c3e50}
+
+.canvas-wrapper{display:flex;gap:16px;margin-bottom:12px}
+canvas{background:#f4f6f8;border-radius:8px;flex:1;height:450px;border:1px solid #dce1e6;touch-action:none}
+
+.view-sidebar{display:flex;flex-direction:column;gap:12px;min-width:145px;max-width:165px;padding:12px;background:#f8f9fa;border-radius:8px;border:1px solid #e0e0e0}
+.view-sidebar .vgroup{display:flex;flex-direction:column;gap:5px}
+.view-sidebar label{font-size:.8em}
+.view-sidebar input[type=range]{width:100%}
+.view-sidebar .vbtns{display:flex;flex-wrap:wrap;gap:4px}
+.view-sidebar .vrow{display:flex;align-items:center;gap:6px}
+.view-btn{padding:3px 8px;font-size:.72em;border:1px solid #999;border-radius:8px;background:#eee;cursor:pointer;color:#444;transition:all .15s;touch-action:manipulation}
+.view-btn:hover{background:#3498db;color:#fff;border-color:#3498db}
+.zoom-val{font-family:monospace;font-size:1em;font-weight:bold;color:#2c3e50}
+.hint{font-size:.7em;color:#999}
+.toggle-bar{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:.78em;color:#555}
+.toggle-bar input{margin:0}
+
+.toolbar{text-align:center;margin:10px 0 16px;display:flex;justify-content:center;align-items:center;gap:20px}
+.btn-pause{padding:8px 28px;font-size:1em;border-radius:6px;border:1px solid #3498db;background:#3498db;color:#fff;cursor:pointer;transition:background .15s;touch-action:manipulation}
+.btn-pause:hover{background:#2980b9}
+
+.footer{text-align:center;margin-top:18px;padding-top:14px;border-top:1px solid #eaeaea;font-size:.78em;color:#95a5a6;line-height:1.6}
+
+@media(max-width:768px){
+  body{padding:10px}
+  .container{padding:14px}
+  h1{font-size:1.3em}
+  .controls{grid-template-columns:1fr;gap:10px}
+  .control-group{padding:10px}
+  .canvas-wrapper{flex-direction:column}
+  canvas{height:300px;width:100%}
+  .view-sidebar{flex-direction:row;flex-wrap:wrap;min-width:unset;max-width:unset;width:100%;padding:10px;gap:8px}
+  .view-sidebar .vgroup{flex:1;min-width:120px}
+  .formulas{padding:10px 12px;font-size:.85em;overflow-x:auto}
+  input[type=number]{width:80px;font-size:.85em}
+  .quick-btn{padding:4px 10px;font-size:.78em}
+  .toolbar{margin:8px 0 12px}
+  .btn-pause{padding:10px 32px;font-size:1.05em}
+}
+
+@media(max-width:480px){
+  body{padding:6px}
+  .container{padding:10px;border-radius:8px}
+  h1{font-size:1.05em}
+  .subtitle{font-size:.78em;margin-bottom:12px}
+  .controls{gap:8px}
+  .control-group{padding:8px}
+  .input-row{flex-wrap:wrap;gap:4px}
+  input[type=number]{width:70px;font-size:.8em}
+  label{font-size:.78em}
+  .quick-btn{padding:3px 8px;font-size:.72em}
+  canvas{height:220px}
+  .view-sidebar{padding:8px;gap:6px}
+  .view-sidebar .vgroup{min-width:100px}
+  .view-sidebar label{font-size:.72em}
+  .view-btn{padding:3px 7px;font-size:.68em}
+  .formulas{padding:8px 10px;font-size:.78em;line-height:1.6}
+  .toolbar{gap:10px}
+  .btn-pause{padding:8px 24px;font-size:.95em}
+  .footer{font-size:.7em;padding-top:10px;margin-top:12px}
+  .lang-btn{font-size:.75em;padding:3px 10px}
+}
+</style>
+</head>
+<body>
+<div class="container">
+<div class="lang-bar">
+<button id="langToggle" class="lang-btn" onclick="toggleLang()">English</button>
+</div>
+<h1 id="i18n-title">克卜勒運動：二體問題與質心互繞</h1>
+<div class="subtitle" id="i18n-subtitle">考慮兩天體質量互相影響，共同繞行系統質心 (Barycenter)</div>
+<div class="formulas-wrapper">
+<div class="formulas-header" onclick="toggleFormulas()">
+<span id="i18n-formulas">計算公式</span>
+<span id="formulaToggle">−</span>
+</div>
+<div class="formulas" id="formulaDisplay"></div>
+</div>
+<div class="formulas-wrapper">
+<div class="formulas-header" onclick="toggleDerivation()">
+<span id="i18n-derivation">M + m 公式推導</span>
+<span id="derivationToggle">+</span>
+</div>
+<div class="formulas hidden" id="derivationDisplay"></div>
+</div>
+
+<div class="controls">
+<div class="control-group">
+<div class="input-row">
+<label id="i18n-labelM">M 中心星質量 (10²⁷ kg)</label>
+<input type="number" id="numM" step="any" min="0.005972" max="1989">
+</div>
+<input type="range" id="rangeM" min="0" max="1000" step="1">
+<div class="quick-row">
+<button class="quick-btn" data-type="M" data-mass="sun" onclick="presetM('sun')" id="i18n-sun">太陽</button>
+<button class="quick-btn" data-type="M" data-mass="jupiter" onclick="presetM('jupiter')" id="i18n-jupiterM">木星</button>
+<button class="quick-btn" data-type="M" data-mass="earth" onclick="presetM('earth')" id="i18n-earthM">地球</button>
+</div>
+</div>
+
+<div class="control-group">
+<div class="input-row">
+<label id="i18n-labelm">m 伴星/衛星質量 (10²⁷ kg)</label>
+<input type="number" id="numm" step="any" min="0.00001">
+</div>
+<input type="range" id="rangem" min="0" max="1000" step="1">
+<div class="quick-row">
+<button class="quick-btn" data-type="m" data-mass="jupiter" onclick="quickm('jupiter')" id="i18n-jupiterm">木星</button>
+<button class="quick-btn" data-type="m" data-mass="earth" onclick="quickm('earth')" id="i18n-earthm">地球</button>
+<button class="quick-btn" data-type="m" data-mass="moon" onclick="quickm('moon')" id="i18n-moon">月球</button>
+<button class="quick-btn" data-type="m" data-mass="io" onclick="quickm('io')" id="i18n-io">木衛一</button>
+<button class="quick-btn" data-type="m" data-mass="europa" onclick="quickm('europa')" id="i18n-europa">木衛二</button>
+<button class="quick-btn" data-type="m" data-mass="ganymede" onclick="quickm('ganymede')" id="i18n-ganymede">木衛三</button>
+<button class="quick-btn" data-type="m" data-mass="callisto" onclick="quickm('callisto')" id="i18n-callisto">木衛四</button>
+</div>
+</div>
+
+<div class="control-group">
+<div class="input-row">
+<label id="i18n-labelA">a 兩星距離 (10⁹ m)</label>
+<input type="number" id="numa" step="any" min="0.1" max="1000">
+</div>
+<input type="range" id="rangea" min="0" max="1000" step="1">
+</div>
+
+<div class="control-group">
+<div class="input-row">
+<label id="i18n-labelT">T 公轉週期 (地球日)</label>
+<input type="number" id="numT" step="any" min="0.1" max="10000">
+</div>
+<input type="range" id="rangeT" min="0" max="1000" step="1">
+</div>
+</div>
+
+<div class="canvas-wrapper">
+<canvas id="canvas"></canvas>
+<div class="view-sidebar">
+<div class="vgroup">
+<label id="i18n-viewAngle">觀測視角</label>
+<input type="range" id="viewAngle" min="0" max="90" step="1" value="0">
+<span class="zoom-val" id="viewAngleDisplay">0°</span>
+<div class="vbtns">
+<button class="view-btn" onclick="setView(0)" id="i18n-viewTop">正上方</button>
+<button class="view-btn" onclick="setView(30)" id="i18n-view30">30度</button>
+<button class="view-btn" onclick="setView(90)" id="i18n-viewSide">側面</button>
+</div>
+<div class="hint" id="i18n-viewHint">右鍵拖曳旋轉</div>
+</div>
+<div class="vgroup">
+<label id="i18n-zoom">縮放</label>
+<span class="zoom-val" id="zoomDisplay">65</span>
+<div class="hint" id="i18n-zoomHint">滾輪縮放</div>
+</div>
+<div class="vgroup">
+<label class="toggle-bar"><input type="checkbox" id="chkBary" checked> <span id="i18n-showBary">顯示質心</span></label>
+</div>
+<div class="vgroup">
+<label id="i18n-elapsed">經歷時間</label>
+<span class="zoom-val" id="elapsedDisplay">0.0 天</span>
+</div>
+</div>
+</div>
+
+<div class="toolbar">
+<button id="pauseBtn" class="btn-pause">⏸ 暫停</button>
+</div>
+
+<div class="footer" id="i18n-footer">臺中市立惠文高中地球科學教師吳秉勳製作</div>
+</div>
+
+<script>
+const G=6.6743e-11,scaleM=1e27,scaleA=1e9,scaleT=86400,SLD=1000;
+const MASS={sun:1989,jupiter:1.8982,earth:0.0059722,moon:0.00007342,io:0.00008932,europa:0.000047998,ganymede:0.00014819,callisto:0.00010759};
+const PRESETS={sun:{m:MASS.jupiter,a:778.5},jupiter:{m:MASS.callisto,a:1.882},earth:{m:MASS.moon,a:0.3844}};
+const COMP_A={jupiter:778.5,earth:149.6,moon:0.3844,io:0.422,europa:0.671,ganymede:1.07,callisto:1.882};
+const COMP_MATCH={jupiter:'sun',earth:'sun',moon:'earth',io:'jupiter',europa:'jupiter',ganymede:'jupiter',callisto:'jupiter'};
+const M_MIN=MASS.earth,M_MAX=MASS.sun,m_MIN=1e-5,A_MIN=0.1,A_MAX=1000,T_MIN=0.1,T_MAX=10000;
+const Z_MIN=0.1,Z_MAX=500;
+let angle=0,isPaused=false,elevation=0,zoomVal=65,elapsedDays=0;
+
+const i18n={zh:{
+  title:'克卜勒運動：二體問題與質心互繞',
+  subtitle:'考慮兩天體質量互相影響，共同繞行系統質心 (Barycenter)',
+  formulas:'計算公式',derivation:'M + m 公式推導',
+  labelM:'M 中心星質量 (10²⁷ kg)',labelm:'m 伴星/衛星質量 (10²⁷ kg)',
+  labelA:'a 兩星距離 (10⁹ m)',labelT:'T 公轉週期 (地球日)',
+  sun:'太陽',jupiterM:'木星',earthM:'地球',
+  jupiterm:'木星',earthm:'地球',moon:'月球',io:'木衛一',europa:'木衛二',ganymede:'木衛三',callisto:'木衛四',
+  viewAngle:'觀測視角',viewTop:'正上方',view30:'30度',viewSide:'側面',viewHint:'右鍵拖曳旋轉',
+  zoom:'縮放',zoomHint:'滾輪縮放',showBary:'顯示質心',elapsed:'經歷時間',
+  pause:'暫停',play:'播放',
+  fgTitle:'Fg (萬有引力) = ( G · M · m ) / a²',
+  fgLine:'Fg (萬有引力) = ( G · M · m ) / a² <br>&nbsp;&nbsp;= 6.67×10⁻¹¹ × (MASS_M kg) × (MASS_m kg) / (MASS_a m)² <br>&nbsp;&nbsp;≈ <strong>RESULT N</strong><br><br>',
+  fcTitle:'Fc (伴星向心力) = ( m · v² ) / r_m',
+  fcLabel:'(r_m為伴星到質心距離)',
+  fcLine:'Fc (伴星向心力) = ( m · v² ) / r_m <span style="color:#95a5a6;font-size:.9em;">(r_m為伴星到質心距離)</span><br>&nbsp;&nbsp;= (MASS_m kg) × (MASS_v m/s)² / (MASS_rm m) <br>&nbsp;&nbsp;≈ <strong>RESULT N</strong><br><br>',
+  sumLine:'M + m = ( 4π²a³ ) / ( G · T² )<br>&nbsp;&nbsp;= 4π² × (MASS_a m)³ / [ 6.67×10⁻¹¹ × (MASS_T s)² ] <br>&nbsp;&nbsp;≈ <strong>RESULT kg</strong>',
+  d1Title:'① 牛頓萬有引力',
+  d1:'F<sub>g</sub> = G·M·m / a²',
+  d2Title:'② 伴星向心力（圓周運動）',
+  d2:'F<sub>c</sub> = m·ω²·r<sub>m</sub> ，其中 ω = 2π / T （角速度），r<sub>m</sub> 為伴星到質心距離',
+  d3Title:'③ 質心位置',
+  d3:'r<sub>m</sub> = a · M / (M + m) （以 M 為原點）',
+  d4Title:'④ 萬有引力 ＝ 向心力（系統平衡）',
+  d4:'G·M·m / a² = m · ω² · r<sub>m</sub>',
+  d5Title:'⑤ 代入 r<sub>m</sub> 、消去 m',
+  d5:'G·M / a² = ω² · [ a · M / (M + m) ]<br>&nbsp;&nbsp;→ G · (M + m) / a³ = ω²',
+  d6Title:'⑥ 代入 ω = 2π / T',
+  d6:'G · (M + m) / a³ = (2π / T)² = 4π² / T²',
+  d7Title:'⑦ 移項得克卜勒第三定律（牛頓修正版）',
+  d7:'<strong>M + m = (4π² · a³) / (G · T²)</strong>',
+  dCenter:'質心',
+  footer:'臺中市立惠文高中地球科學教師吳秉勳製作'
+},en:{
+  title:'Kepler Motion: Two-Body Problem & Barycenter',
+  subtitle:'Two celestial bodies influence each other, orbiting the system\'s barycenter',
+  formulas:'Formulas',derivation:'Derivation of M + m',
+  labelM:'M Central Star Mass (10²⁷ kg)',labelm:'m Companion Mass (10²⁷ kg)',
+  labelA:'a Distance (10⁹ m)',labelT:'T Orbital Period (Earth days)',
+  sun:'Sun',jupiterM:'Jupiter',earthM:'Earth',
+  jupiterm:'Jupiter',earthm:'Earth',moon:'Moon',io:'Io',europa:'Europa',ganymede:'Ganymede',callisto:'Callisto',
+  viewAngle:'View Angle',viewTop:'Top',view30:'30°',viewSide:'Side',viewHint:'Right-drag to rotate',
+  zoom:'Zoom',zoomHint:'Scroll to zoom',showBary:'Show Barycenter',elapsed:'Elapsed Time',
+  pause:'Pause',play:'Play',
+  fgTitle:'Fg (Gravitational Force) = (G · M · m) / a²',
+  fgLine:'Fg (Gravitational Force) = ( G · M · m ) / a² <br>&nbsp;&nbsp;= 6.67×10⁻¹¹ × (MASS_M kg) × (MASS_m kg) / (MASS_a m)² <br>&nbsp;&nbsp;≈ <strong>RESULT N</strong><br><br>',
+  fcTitle:'Fc (Centripetal Force) = ( m · v² ) / r_m',
+  fcLabel:'(r_m: distance from companion to barycenter)',
+  fcLine:'Fc (Centripetal Force) = ( m · v² ) / r_m <span style="color:#95a5a6;font-size:.9em;">(r_m: distance from companion to barycenter)</span><br>&nbsp;&nbsp;= (MASS_m kg) × (MASS_v m/s)² / (MASS_rm m) <br>&nbsp;&nbsp;≈ <strong>RESULT N</strong><br><br>',
+  sumLine:'M + m = ( 4π²a³ ) / ( G · T² )<br>&nbsp;&nbsp;= 4π² × (MASS_a m)³ / [ 6.67×10⁻¹¹ × (MASS_T s)² ] <br>&nbsp;&nbsp;≈ <strong>RESULT kg</strong>',
+  d1Title:'① Newton\'s Law of Gravitation',
+  d1:'F<sub>g</sub> = G·M·m / a²',
+  d2Title:'② Centripetal Force (Circular Motion)',
+  d2:'F<sub>c</sub> = m·ω²·r<sub>m</sub>, where ω = 2π / T (angular velocity), r<sub>m</sub> = distance from companion to barycenter',
+  d3Title:'③ Center of Mass (Barycenter)',
+  d3:'r<sub>m</sub> = a · M / (M + m) (with M as origin)',
+  d4Title:'④ Gravitational Force ＝ Centripetal Force (Equilibrium)',
+  d4:'G·M·m / a² = m · ω² · r<sub>m</sub>',
+  d5Title:'⑤ Substitute r<sub>m</sub>, cancel m',
+  d5:'G·M / a² = ω² · [ a · M / (M + m) ]<br>&nbsp;&nbsp;→ G · (M + m) / a³ = ω²',
+  d6Title:'⑥ Substitute ω = 2π / T',
+  d6:'G · (M + m) / a³ = (2π / T)² = 4π² / T²',
+  d7Title:'⑦ Kepler\'s 3rd Law (Newton\'s corrected form)',
+  d7:'<strong>M + m = (4π² · a³) / (G · T²)</strong>',
+  dCenter:'Barycenter',
+  footer:'Made by Bing-Syun Wu, Earth Science Teacher, Hui-Wen Senior High School'
+}};
+
+let currentLang='zh';
+
+function applyLang(lang){
+  currentLang=lang;
+  const t=i18n[lang];
+  document.title=t.title;
+  document.getElementById('i18n-title').textContent=t.title;
+  document.getElementById('i18n-subtitle').textContent=t.subtitle;
+  document.getElementById('i18n-formulas').textContent=t.formulas;
+  document.getElementById('i18n-derivation').textContent=t.derivation;
+  document.getElementById('i18n-labelM').textContent=t.labelM;
+  document.getElementById('i18n-labelm').textContent=t.labelm;
+  document.getElementById('i18n-labelA').textContent=t.labelA;
+  document.getElementById('i18n-labelT').textContent=t.labelT;
+  document.getElementById('i18n-sun').textContent=t.sun;
+  document.getElementById('i18n-jupiterM').textContent=t.jupiterM;
+  document.getElementById('i18n-earthM').textContent=t.earthM;
+  document.getElementById('i18n-jupiterm').textContent=t.jupiterm;
+  document.getElementById('i18n-earthm').textContent=t.earthm;
+  document.getElementById('i18n-moon').textContent=t.moon;
+  document.getElementById('i18n-io').textContent=t.io;
+  document.getElementById('i18n-europa').textContent=t.europa;
+  document.getElementById('i18n-ganymede').textContent=t.ganymede;
+  document.getElementById('i18n-callisto').textContent=t.callisto;
+  document.getElementById('i18n-viewAngle').textContent=t.viewAngle;
+  document.getElementById('i18n-viewTop').textContent=t.viewTop;
+  document.getElementById('i18n-view30').textContent=t.view30;
+  document.getElementById('i18n-viewSide').textContent=t.viewSide;
+  document.getElementById('i18n-viewHint').textContent=t.viewHint;
+  document.getElementById('i18n-zoom').textContent=t.zoom;
+  document.getElementById('i18n-zoomHint').textContent=t.zoomHint;
+  document.getElementById('i18n-showBary').textContent=t.showBary;
+  document.getElementById('i18n-elapsed').textContent=t.elapsed;
+  document.getElementById('i18n-footer').textContent=t.footer;
+  document.getElementById('langToggle').textContent=lang==='zh'?'English':'中文';
+  // Update elapsed time display unit
+  const ed=document.getElementById('elapsedDisplay');
+  const val=parseFloat(ed.textContent);
+  if(!isNaN(val))ed.textContent=lang==='zh'?val+' 天':val+' d';
+  // Update pause button
+  const pb=document.getElementById('pauseBtn');
+  pb.textContent=isPaused?'▶ '+t.play:'⏸ '+t.pause;
+  updateFormulaDisplay();
+}
+
+function toggleLang(){applyLang(currentLang==='zh'?'en':'zh')}
+
+function autoDetectLang(){
+  const navLang=(navigator.language||navigator.userLanguage||'').toLowerCase();
+  return navLang.startsWith('zh')?'zh':'en';
+}
+
+function v2v(p,vmin,vmax){return vmin*Math.pow(vmax/vmin,p/SLD)}
+function v2s(v,vmin,vmax){return v<=vmin?0:v>=vmax?SLD:Math.round(Math.log(v/vmin)/Math.log(vmax/vmin)*SLD)}
+
+function fmtM(v){let s;if(v>=100)s=v.toFixed(1);else if(v>=1)s=v.toFixed(3);else if(v>=.001)s=v.toFixed(6);else if(v>=1e-6)s=v.toFixed(8);else s=v.toFixed(10);return parseFloat(s)+""}
+function fmtAT(v){return v.toFixed(2)}
+function fmtExp(v){return v.toExponential(2).replace('e+',' × 10^').replace('e-',' × 10^-')}
+
+function syncM(v){document.getElementById('numM').value=fmtM(v);document.getElementById('rangeM').value=v2s(v,M_MIN,M_MAX)}
+function syncm(v){let M=+document.getElementById('numM').value||M_MIN;document.getElementById('numm').value=fmtM(v);document.getElementById('rangem').value=v2s(v,m_MIN,M)}
+function syncA(v){document.getElementById('numa').value=fmtAT(v);document.getElementById('rangea').value=v2s(v,A_MIN,A_MAX)}
+function syncT(v){document.getElementById('numT').value=fmtAT(v);document.getElementById('rangeT').value=v2s(v,T_MIN,T_MAX)}
+
+function recalcT(){let M=(+document.getElementById('numM').value)*scaleM,m=(+document.getElementById('numm').value)*scaleM,a=(+document.getElementById('numa').value)*scaleA;syncT(Math.sqrt(4*Math.PI**2*a**3/(G*(M+m)))/scaleT)}
+function recalcA(){let M=(+document.getElementById('numM').value)*scaleM,m=(+document.getElementById('numm').value)*scaleM,T=(+document.getElementById('numT').value)*scaleT;syncA(Math.cbrt(G*(M+m)*T*T/(4*Math.PI*Math.PI))/scaleA)}
+
+function onMChange(v){v=Math.min(M_MAX,Math.max(M_MIN,v));syncM(v);let m=+document.getElementById('numm').value||m_MIN;syncm(Math.min(m,v));recalcT();updateActiveButtons();updateFormulaDisplay()}
+function onmChange(v){let M=+document.getElementById('numM').value||M_MIN;v=Math.min(M,Math.max(m_MIN,v));syncm(v);recalcT();updateActiveButtons();updateFormulaDisplay()}
+function onAChange(v){v=Math.min(A_MAX,Math.max(A_MIN,v));syncA(v);recalcT();updateFormulaDisplay()}
+function onTChange(v){v=Math.min(T_MAX,Math.max(T_MIN,v));syncT(v);recalcA();updateFormulaDisplay()}
+
+function quickm(n){
+  let t=MASS[n],Mcur=+document.getElementById('numM').value||M_MIN;onmChange(Math.min(t,Mcur));
+  let mn=COMP_MATCH[n];if(mn){let eM=MASS[mn];
+    if(Math.abs(Mcur-eM)/eM<.01)onAChange(COMP_A[n])}
+  elapsedDays=0
+}
+
+function presetM(n){
+  let p=PRESETS[n],Mv=MASS[n];onMChange(Mv);elapsedDays=0;
+  let mt=Math.min(Mv,Math.max(m_MIN,p.m));syncm(mt);onAChange(p.a);
+  let zm={sun:0.3,jupiter:100,earth:500};zoomVal=zm[n]||65;
+  document.getElementById('zoomDisplay').textContent=Math.round(zoomVal*10)/10;
+  updateActiveButtons()
+}
+
+function setView(deg){document.getElementById('viewAngle').value=deg;elevation=deg;document.getElementById('viewAngleDisplay').textContent=deg+'°'}
+function updateActiveButtons(){
+  let Mv=+document.getElementById('numM').value,mv=+document.getElementById('numm').value;
+  document.querySelectorAll('.quick-btn[data-type="M"]').forEach(b=>{
+    let t=MASS[b.dataset.mass];b.classList.toggle('active',Math.abs(Mv-t)/t<.01)});
+  document.querySelectorAll('.quick-btn[data-type="m"]').forEach(b=>{
+    let t=MASS[b.dataset.mass];b.classList.toggle('active',Math.abs(mv-t)/t<.01)})}
+
+function toggleFormulas(){
+  let el=document.getElementById('formulaDisplay'),tg=document.getElementById('formulaToggle');
+  el.classList.toggle('hidden');tg.textContent=el.classList.contains('hidden')?'+':'−'}
+function toggleDerivation(){
+  let el=document.getElementById('derivationDisplay'),tg=document.getElementById('derivationToggle');
+  el.classList.toggle('hidden');tg.textContent=el.classList.contains('hidden')?'+':'−'}
+document.getElementById('numM').addEventListener('input',function(e){let v=parseFloat(e.target.value);if(!isNaN(v))onMChange(v)});
+document.getElementById('rangeM').addEventListener('input',function(e){onMChange(v2v(+e.target.value,M_MIN,M_MAX))});
+document.getElementById('numm').addEventListener('input',function(e){let v=parseFloat(e.target.value);if(!isNaN(v))onmChange(v)});
+document.getElementById('rangem').addEventListener('input',function(e){let M=+document.getElementById('numM').value||M_MIN;onmChange(v2v(+e.target.value,m_MIN,M))});
+document.getElementById('numa').addEventListener('input',function(e){let v=parseFloat(e.target.value);if(!isNaN(v))onAChange(v)});
+document.getElementById('rangea').addEventListener('input',function(e){onAChange(v2v(+e.target.value,A_MIN,A_MAX))});
+document.getElementById('numT').addEventListener('input',function(e){let v=parseFloat(e.target.value);if(!isNaN(v))onTChange(v)});
+document.getElementById('rangeT').addEventListener('input',function(e){onTChange(v2v(+e.target.value,T_MIN,T_MAX))});
+document.getElementById('viewAngle').addEventListener('input',function(e){setView(+e.target.value)});
+document.getElementById('pauseBtn').addEventListener('click',function(){isPaused=!isPaused;const t=i18n[currentLang];this.textContent=isPaused?'▶ '+t.play:'⏸ '+t.pause});
+
+function calcPhysics(){
+  const M=(+document.getElementById('numM').value)*scaleM,m=(+document.getElementById('numm').value)*scaleM,
+        a=(+document.getElementById('numa').value)*scaleA,T=(+document.getElementById('numT').value)*scaleT,
+        r_m=a*(M/(M+m)),r_M=a*(m/(M+m));
+  return{M,m,a,T,r_m,r_M}
+}
+
+function updateFormulaDisplay(){
+  const p=calcPhysics(),t=i18n[currentLang];
+  const M=p.M,m=p.m,a=p.a,T=p.T,
+        Fg=G*M*m/(a*a),r_m=p.r_m,
+        v_m=2*Math.PI*r_m/T,Fc=m*v_m*v_m/r_m;
+  function rpl(s){return s.replace('MASS_M',fmtExp(M)).replace('MASS_m',fmtExp(m)).replace('MASS_a',fmtExp(a)).replace('MASS_T',fmtExp(T)).replace('MASS_rm',fmtExp(r_m)).replace('MASS_v',fmtExp(v_m)).replace('RESULT N',fmtExp(Fg)).replace('RESULT kg',fmtExp(M+m))}
+  document.getElementById('formulaDisplay').innerHTML=
+    rpl(t.fgLine)+rpl(t.fcLine)+rpl(t.sumLine);
+  document.getElementById('derivationDisplay').innerHTML=
+    '<svg viewBox="0 0 380 95" style="width:100%;max-width:370px;display:block;margin:6px auto 14px">'+
+      '<line x1="45" y1="50" x2="340" y2="50" stroke="#bdc3c7" stroke-width="1.2"/>'+
+      '<circle cx="85" cy="50" r="20" fill="#d39c7e" stroke="#b07f63" stroke-width="2"/>'+
+      '<text x="85" y="56" text-anchor="middle" fill="#fff" font-size="18" font-weight="bold">M</text>'+
+      '<circle cx="300" cy="50" r="13" fill="#7f8c8d" stroke="#5d6d7e" stroke-width="2"/>'+
+      '<text x="300" y="55" text-anchor="middle" fill="#fff" font-size="13" font-weight="bold">m</text>'+
+      '<circle cx="170" cy="50" r="4" fill="#e74c3c"/>'+
+      '<line x1="166" y1="46" x2="174" y2="54" stroke="#e74c3c" stroke-width="2"/>'+
+      '<line x1="174" y1="46" x2="166" y2="54" stroke="#e74c3c" stroke-width="2"/>'+
+      '<text x="170" y="40" text-anchor="middle" fill="#e74c3c" font-size="11">'+t.dCenter+'</text>'+
+      '<line x1="85" y1="72" x2="170" y2="72" stroke="#3498db" stroke-width="1.2" stroke-dasharray="4,3"/>'+
+      '<line x1="85" y1="68" x2="85" y2="78" stroke="#3498db" stroke-width="1.2"/>'+
+      '<line x1="170" y1="68" x2="170" y2="78" stroke="#3498db" stroke-width="1.2"/>'+
+      '<text x="127" y="88" text-anchor="middle" fill="#3498db" font-size="13" font-style="italic">r<tspan dy="2" font-size="9">M</tspan></text>'+
+      '<line x1="170" y1="72" x2="300" y2="72" stroke="#3498db" stroke-width="1.2" stroke-dasharray="4,3"/>'+
+      '<line x1="300" y1="68" x2="300" y2="78" stroke="#3498db" stroke-width="1.2"/>'+
+      '<text x="236" y="88" text-anchor="middle" fill="#3498db" font-size="13" font-style="italic">r<tspan dy="2" font-size="9">m</tspan></text>'+
+      '<line x1="85" y1="26" x2="85" y2="32" stroke="#e74c3c" stroke-width="1.5"/>'+
+      '<line x1="300" y1="26" x2="300" y2="32" stroke="#e74c3c" stroke-width="1.5"/>'+
+      '<line x1="85" y1="29" x2="300" y2="29" stroke="#e74c3c" stroke-width="1.5"/>'+
+      '<polygon points="295,29 288,26 288,32" fill="#e74c3c"/>'+
+      '<polygon points="90,29 97,26 97,32" fill="#e74c3c"/>'+
+      '<text x="192" y="20" text-anchor="middle" fill="#e74c3c" font-size="14" font-style="italic">a</text>'+
+    '</svg>'+
+    '<strong>'+t.d1Title+'</strong><br>&nbsp;&nbsp;'+t.d1+'<br><br>'+
+    '<strong>'+t.d2Title+'</strong><br>&nbsp;&nbsp;'+t.d2+'<br><br>'+
+    '<strong>'+t.d3Title+'</strong><br>&nbsp;&nbsp;'+t.d3+'<br><br>'+
+    '<strong>'+t.d4Title+'</strong><br>&nbsp;&nbsp;'+t.d4+'<br><br>'+
+    '<strong>'+t.d5Title+'</strong><br>&nbsp;&nbsp;'+t.d5+'<br><br>'+
+    '<strong>'+t.d6Title+'</strong><br>&nbsp;&nbsp;'+t.d6+'<br><br>'+
+    '<strong>'+t.d7Title+'</strong><br>&nbsp;&nbsp;'+t.d7;
+}
+
+const PI=Math.PI,TAU=2*PI;
+const canvas=document.getElementById('canvas'),ctx=canvas.getContext('2d');
+let dragY=0,dragging=false,touchY=0;
+
+function draw(){
+  canvas.width=canvas.offsetWidth;canvas.height=canvas.offsetHeight;
+  const cx=canvas.width/2,cy=canvas.height/2;
+  const p=calcPhysics(),eRad=elevation*PI/180,ce=Math.cos(eRad),se=Math.sin(eRad);
+  const visA=(p.a/scaleA)*zoomVal;
+  const rm=visA*(p.M/(p.M+p.m)),rM=visA*(p.m/(p.M+p.m));
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  const orb=(r,sty)=>{ctx.strokeStyle=sty;ctx.lineWidth=1.3;ctx.setLineDash([]);
+    ctx.beginPath();for(let i=0;i<=120;i++){let th=TAU*i/120;
+      let sx=cx+r*Math.cos(th),sy=cy+r*Math.sin(th)*ce;
+      i===0?ctx.moveTo(sx,sy):ctx.lineTo(sx,sy)}ctx.stroke()};
+  orb(rm,'rgba(127,140,141,.35)');orb(rM,'rgba(211,156,126,.35)');
+
+  const mP={x:cx+rm*Math.cos(angle),y:cy+rm*Math.sin(angle)*ce};
+  const MP={x:cx+rM*Math.cos(angle+PI),y:cy+rM*Math.sin(angle+PI)*ce};
+  const mD=rm*Math.sin(angle)*se,MD=rM*Math.sin(angle+PI)*se;
+  const maxD=rm+rM+1;
+
+  ctx.strokeStyle='rgba(189,195,199,.35)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.moveTo(mP.x,mP.y);ctx.lineTo(MP.x,MP.y);ctx.stroke();
+
+  const zs=Math.sqrt(zoomVal/65);
+  const bdy=(pos,d,isM)=>{
+    let t=(d/maxD+1)/2;t=Math.min(1,Math.max(0,t));
+    let base=Math.cbrt((isM?p.M:p.m)/scaleM)*14;
+    let sz=Math.max(4,base*zs)*(0.6+0.4*t);
+    let a=0.35+0.65*t;
+    ctx.fillStyle=isM?`rgba(211,156,126,${a})`:`rgba(127,140,141,${a})`;
+    ctx.beginPath();ctx.arc(pos.x,pos.y,sz,0,TAU);ctx.fill();
+    if(t>0.4){ctx.strokeStyle=isM?'#b07f63':'#5d6d7e';ctx.lineWidth=2;ctx.stroke()}
+  };
+  [{p:mP,d:mD,i:0},{p:MP,d:MD,i:1}].sort((a,b)=>a.d-b.d).forEach(o=>bdy(o.p,o.d,o.i));
+
+  if(document.getElementById('chkBary').checked){
+    ctx.strokeStyle='rgba(231,76,60,.7)';ctx.lineWidth=2;
+    ctx.beginPath();ctx.moveTo(cx-8,cy);ctx.lineTo(cx+8,cy);ctx.moveTo(cx,cy-8);ctx.lineTo(cx,cy+8);ctx.stroke()}
+
+  if(!isPaused){let td=p.T/scaleT;angle+=TAU/(td*15);elapsedDays+=1/15}
+  const lang=currentLang;
+  document.getElementById('elapsedDisplay').textContent=(elapsedDays<100?elapsedDays.toFixed(1):Math.round(elapsedDays))+(lang==='zh'?' 天':' d');
+  requestAnimationFrame(draw)
+}
+
+canvas.addEventListener('wheel',function(e){e.preventDefault();
+  let f=e.deltaY<0?1.1:1/1.1;zoomVal=Math.min(Z_MAX,Math.max(Z_MIN,zoomVal*f));
+  document.getElementById('zoomDisplay').textContent=Math.round(zoomVal*10)/10},{passive:false});
+canvas.addEventListener('mousedown',function(e){if(e.button===2){dragging=true;dragY=e.clientY;e.preventDefault()}});
+document.addEventListener('mousemove',function(e){if(dragging){let d=dragY-e.clientY;
+  setView(Math.min(90,Math.max(0,elevation+d*0.5)));dragY=e.clientY}});
+document.addEventListener('mouseup',function(e){if(e.button===2)dragging=false});
+canvas.addEventListener('contextmenu',function(e){e.preventDefault()});
+canvas.addEventListener('touchstart',function(e){if(e.touches.length===1){touchY=e.touches[0].clientY}},{passive:true});
+canvas.addEventListener('touchmove',function(e){if(e.touches.length===1){let d=touchY-e.touches[0].clientY;setView(Math.min(90,Math.max(0,elevation+d*0.5)));touchY=e.touches[0].clientY}},{passive:true});
+
+presetM('jupiter');
+document.getElementById('viewAngle').value=0;
+document.getElementById('viewAngleDisplay').textContent='0°';
+applyLang(autoDetectLang());
+updateFormulaDisplay();
+draw();
+</script>
+</body>
+</html>
